@@ -54,6 +54,155 @@ In this example you have one sample that is processed through one GEM well (a se
 
 In this example you have one sample that is processed through one GEM well resulting in one ATAC library and one GEX library. The ATAC and GEX libraries are sequenced on two flow cells each. As an example, this may be done to increase sequencing depth, when the first sequencing run did not produce enough raw read pairs per cell. Here we would run cellranger-arc mkfastq a total of four times: once for each of the two ATAC flow cells and once for each of the two GEX flow cells. All of the reads can be combined in a single instance of the cellranger-arc count pipeline. This process is described in Specifying Input Fastqs.
 
+**Single-Library Analysis with Cell Ranger ARC**
+Cell Ranger ARC's pipelines analyze sequencing data produced from Chromium Single Cell Multiome ATAC + Gene Expression. The analysis involves the following steps:
+
+Run cellranger-arc mkfastq on the Illumina BCL output folder for each ATAC (GEX resp.) flow cell to generate ATAC (GEX resp.) FASTQ data. Note that a separate run of mkfastq is required for each ATAC and each GEX flow cell.
+
+Run a separate instance of cellranger-arc count for each GEM well that was demultiplexed by the cellranger-arc mkfastq in the previous step.
+
+For the following example, assume that one sample is processed using Single Cell Multiome ATAC + Gene Expression to generate a Multiome ATAC library and a Multiome Gene Expression (GEX) library. The Multiome ATAC library is sequenced on flow cell HNATACSQXX and the Illumina BCL output is located in /sequencing/Sample_ATAC_HNATACSQXX; similarly, the Multiome GEX library is sequenced on flow cell HNGEXSQXXX and the Illumina BCL output is located in /sequencing/Sample_GEX_HNGEXSQXXX.
+
+Run cellranger-arc mkfastq
+Follow the instructions on running cellranger-arc mkfastq to generate FASTQ files for both the ATAC and GEX flow cells. cellranger-arc mkfastq will create output ATAC FASTQ files in HNATACSQXX/outs/fastq_path and GEX FASTQ files in HNGEXSQXXX/outs/fastq_path.
+
+Download or create a cellranger-arc-compatible reference
+Reference packages for human (GRCh38) and mouse (mm10) compatible with Cell Ranger ARC are available for download. You can also create a reference package using cellranger-arc mkref starting with a genome assembly FASTA file, a GTF file of gene annotations, and optionally a file of transcription factor motifs in JASPAR format.
+
+Create a libraries CSV file
+Construct a 3-column libraries CSV file that specifies the location of the ATAC and GEX FASTQ files associated with the sample.
+
+
+Column Name	Description
+fastqs	A fully qualified path to the directory containing the demultiplexed FASTQ files for this sample. This field does not accept comma-delimited paths. If you have multiple sets of fastqs for this library, add an additional row, and use the use same library_type value.
+sample	Sample name assigned in the bcl2fastq sample sheet.
+library_type	This field is case-sensitive and must exactly match Chromatin Accessibility for a Multiome ATAC library and Gene Expression for a Multiome GEX library.
+For our example, the file would look as follows:
+
+fastqs,sample,library_type
+/home/jdoe/runs/HNGEXSQXXX/outs/fastq_path,example,Gene Expression
+/home/jdoe/runs/HNATACSQXX/outs/fastq_path,example,Chromatin Accessibility
+The CSV contains two rows as all the sequencing data for ATAC (GEX resp.) were obtained from one flow cell. The library_type is restricted to be either Gene Expression or Chromatin Accessibility.
+Run cellranger-arc count
+To generate single cell feature counts and secondary analyses for a single library, run cellranger-arc count with the following arguments. For a complete listing of the arguments accepted, see the Command Line Argument Reference below, or run cellranger-arc count --help.
+
+For help on which arguments to use to target a particular set of FASTQs, consult Specifying Input FASTQ Files for 10x Pipelines.
+After determining these input arguments, run cellranger-arc:
+```shell
+ cd /home/jdoe/runs
+ cellranger-arc count --id=sample345 \
+                       --reference=/opt/refdata-cellranger-arc-GRCh38-2020-A-2.0.0 \
+                       --libraries=/home/jdoe/runs/libraries.csv \
+                       --localcores=16 \
+                       --localmem=64
+```
+Following a series of checks to validate input arguments, cellranger-arc count pipeline stages will begin to run:
+
+Martian Runtime - v4.0.5
+ 
+Running preflight checks (please wait)...
+Checking FASTQ folder...
+Checking reference...
+Checking reference_path (/opt/refdata-cellranger-arc-GRCh38-2020-A-2.0.0) on compute-server32...
+Checking chemistry...
+Checking optional arguments...
+...
+
+By default, cellranger-arc will use all the cores available on your system to execute pipeline stages. You can specify a different number of cores to use with the --localcores option; for example, --localcores=16 will limit cellranger-arc to using up to sixteen cores at once. Similarly, --localmem will restrict the amount of memory (in GB) used by cellranger-arc.
+
+The pipeline will create a new folder named with the sample ID you specified (e.g. /home/jdoe/runs/sample345) for its output. If this folder already exists, cellranger-arc will assume it is an existing pipestance and attempt to resume running it.
+
+
+Output Files
+A successful cellranger-arc count run should conclude with a message similar to this:
+
+Outputs:
+- Secondary analysis outputs:
+    clustering:
+      atac: {
+        ...
+      }
+      gex:  {
+        ...
+      }
+    dimensionality_reduction:
+      atac: {
+        ...
+      }
+      gex:  {
+        ...
+      }
+    feature_linkage:
+      ...
+    tf_analysis:
+      ...
+- Run summary HTML:                              /home/jdoe/runs/sample345/outs/web_summary.html
+- Run summary metrics CSV:                       /home/jdoe/runs/sample345/outs/summary.csv
+- Per barcode summary metrics:                   /home/jdoe/runs/sample345/outs/per_barcode_metrics.csv
+- Filtered feature barcode matrix MEX:           /home/jdoe/runs/sample345/outs/filtered_feature_bc_matrix
+- Filtered feature barcode matrix HDF5:          /home/jdoe/runs/sample345/outs/filtered_feature_bc_matrix.h5
+- Raw feature barcode matrix MEX:                /home/jdoe/runs/sample345/outs/raw_feature_bc_matrix
+- Raw feature barcode matrix HDF5:               /home/jdoe/runs/sample345/outs/raw_feature_bc_matrix.h5
+- Loupe browser visualization file:              /home/jdoe/runs/sample345/outs/cloupe.cloupe
+- GEX Position-sorted alignments BAM:            /home/jdoe/runs/sample345/outs/gex_possorted_bam.bam
+- GEX Position-sorted alignments BAM index:      /home/jdoe/runs/sample345/outs/gex_possorted_bam.bam.bai
+- GEX Per molecule information file:             /home/jdoe/runs/sample345/outs/gex_molecule_info.h5
+- ATAC Position-sorted alignments BAM:           /home/jdoe/runs/sample345/outs/atac_possorted_bam.bam
+- ATAC Position-sorted alignments BAM index:     /home/jdoe/runs/sample345/outs/atac_possorted_bam.bam.bai
+- ATAC Per fragment information file:            /home/jdoe/runs/sample345/outs/atac_fragments.tsv.gz
+- ATAC Per fragment information index:           /home/jdoe/runs/sample345/outs/atac_fragments.tsv.gz.tbi
+- ATAC peak locations:                           /home/jdoe/runs/sample345/outs/atac_peaks.bed
+- ATAC smoothed transposition site track:        /home/jdoe/runs/sample345/outs/atac_cut_sites.bigwig
+- ATAC peak annotations based on proximal genes: /home/jdoe/runs/sample345/outs/atac_peak_annotation.tsv
+ 
+Waiting 6 seconds for UI to do final refresh.
+Pipestance completed successfully!
+ 
+yyyy-mm-dd hh:mm:ss Shutting down.
+ 
+Saving pipestance info to "sample345/sample345.mri.tgz"
+The output of the pipeline will be contained in a folder named with the sample ID you specified (e.g. sample345). The subfolder named outs will contain the main pipeline output files:
+
+File Name	Description
+web_summary.html	Run summary metrics and charts in HTML format.
+summary.csv	Run summary metrics in CSV format.
+raw_feature_bc_matrix.h5	Raw feature barcode matrix stored as a CSC sparse matrix in hdf5 format. The rows consist of all the gene and peak features concatenated together and the columns consist of all observed barcodes with non-zero signal for either ATAC or gene expression.
+raw_feature_bc_matrix	Raw feature barcode matrix stored as a CSC sparse matrix in MEX format. The rows consist of all the gene and peak features concatenated together and the columns consist of all observed barcodes with non-zero signal for either ATAC or gene expression.
+per_barcode_metrics.csv	ATAC and GEX read count summaries generated for every barcode observed in the experiment. For more details see Per-barcode metrics.
+gex_possorted_bam.bam	GEX reads aligned to the genome and transcriptome annotated with barcode information in BAM format.
+gex_possorted_bam.bam.bai	Index for gex_possorted_bam.bam.
+gex_molecule_info.h5	Count and barcode information for every GEX molecule observed in the experiment in hdf5 format.
+filtered_feature_bc_matrix.h5	Filtered feature barcode matrix stored as a CSC sparse matrix in hdf5 format. The rows consist of all the gene and peak features concatenated together (identical to raw feature barcode matrix) and the columns are restricted to those barcodes that are identified as cells.
+filtered_feature_bc_matrix	Filtered feature barcode matrix stored as a CSC sparse matrix in MEX format. The rows consist of all the gene and peak features concatenated together (identical to raw feature barcode matrix) and the columns are restricted to those barcodes that are identified as cells.
+cloupe.cloupe	Loupe Browser visualization file with all the analysis outputs.
+atac_possorted_bam.bam.bai	ATAC reads aligned to the genome annotated with barcode information in BAM format.
+atac_possorted_bam.bam	Index for atac_possorted_bam.bam.
+atac_peaks.bed	Locations of open-chromatin regions identified in this sample. These regions are referred to as "peaks".
+atac_peak_annotation.tsv	Annotations of peaks based on genomic proximity alone. Note that these are not functional annotations and they do not make use of linkage with GEX data.
+atac_fragments.tsv.gz	Count and barcode information for every ATAC fragment observed in the experiment in TSV format.
+atac_fragments.tsv.gz.tbi	Index for atac_fragments.tsv.gz.
+atac_cut_sites.bigwig	Genome track of observed transposition sites in the experiment smoothed at a resolution of 400 bases in BIGWIG format.
+analysis	Various secondary analyses that utilize the ATAC data, the GEX data, and their linkage: dimensionality reduction and clustering results for the ATAC and GEX data, differential expression, and differential accessibility for all clustering results above and linkage between ATAC and GEX data. See Analysis Overview for more information.
+Once cellranger-arc count has successfully completed, you can browse the resulting summary HTML file in any supported web browser, open the .cloupe file in Loupe Browser, or refer to the Understanding Output section to explore the data manually.
+
+
+Command-Line Argument Reference
+These are the required command line arguments (also available through cellranger-arc aggr --help):
+
+Argument	Description
+--id	A unique run ID string that must consist solely of letter, number, hyphen (-), or underscore (_) characters and be at most 64 characters long. This is the name of the directory that contains all the pipeline-generated files and outputs.
+--libraries	Path to a 3-column CSV file declaring FASTQ paths, sample names and library types of input ATAC and GEX FASTQs. The libraries CSV format is described here.
+--reference	Path to the cellranger-arc-compatible reference package. References for human and mouse are available for download. Custom references can be constructed as described here.
+Additional optional parameters are available:
+
+Argument	Description
+--description	Sample description to embed into output files
+--gex-exclude-introns	Disable counting of intronic reads. In this mode we only count reads that are exonic and compatible with annotated splice junctions in the reference. Note: using this mode will reduce the UMI counts in the count matrix.
+--min-atac-count	Cell caller override: define the minimum number of ATAC transposition events in peaks (ATAC counts) for a cell barcode. Note: this option must be specified in conjunction with `min-gex-count`. With `--min-atac-count=X` and `--min-gex-count=Y` a barcode is defined as a cell if it contains at least X ATAC counts AND at least Y GEX UMI counts. It is advisable to use these parameters only after reviewing the web summary generated using default parameters.
+--min-gex-count	Cell caller override: define the minimum number of GEX UMI counts for a cell barcode. Note: this option must be specified in conjunction with `min-atac-count`. With `--min- atac-count=X` and `--min-gex-count=Y` a barcode is defined as a cell if it contains at least X ATAC counts AND at least Y GEX UMI counts. It is advisable to use these parameters only after reviewing the web summary generated using default parameters.
+--peaks	Peak-caller override: specify peaks to use in downstream analyses from supplied BED file. Note that the file must only contain three columns specifying the contig, start, and end of the peaks. The peaks must not overlap each other. The file must be sorted by position with the same chromosome order as the reference package. The file is allowed to contain comment lines beginning with `#`.
+--localcores	Restricts cellranger-arc to use specified number of cores to execute pipeline stages. By default, cellranger-arc will use all of the cores available on your system.
+--localmem	Restricts cellranger-arc to use specified amount of memory (in GB) to execute pipeline stages. By default, cellranger-arc will use 90% of the memory available on your system.
 
 ### 2.2 WNN analysis of 10x Multiome, RNA + ATAC  (Seurat)
 ```Seurat4``` was used to analyze paired single cell transcriptome and ATAC-seq. 
