@@ -55,34 +55,30 @@ In this example you have one sample that is processed through one GEM well (a se
 In this example you have one sample that is processed through one GEM well resulting in one ATAC library and one GEX library. The ATAC and GEX libraries are sequenced on two flow cells each. As an example, this may be done to increase sequencing depth, when the first sequencing run did not produce enough raw read pairs per cell. Here we would run cellranger-arc mkfastq a total of four times: once for each of the two ATAC flow cells and once for each of the two GEX flow cells. All of the reads can be combined in a single instance of the cellranger-arc count pipeline. This process is described in Specifying Input Fastqs.
 
 **Single-Library Analysis with Cell Ranger ARC**
+
 Cell Ranger ARC's pipelines analyze sequencing data produced from Chromium Single Cell Multiome ATAC + Gene Expression. The analysis involves the following steps:
 
-Run cellranger-arc mkfastq on the Illumina BCL output folder for each ATAC (GEX resp.) flow cell to generate ATAC (GEX resp.) FASTQ data. Note that a separate run of mkfastq is required for each ATAC and each GEX flow cell.
+- Run cellranger-arc mkfastq on the Illumina BCL output folder for each ATAC (GEX resp.) flow cell to generate ATAC (GEX resp.) FASTQ data. Note that a separate run of mkfastq is required for each ATAC and each GEX flow cell.
 
-Run a separate instance of cellranger-arc count for each GEM well that was demultiplexed by the cellranger-arc mkfastq in the previous step.
+- Run a separate instance of cellranger-arc count for each GEM well that was demultiplexed by the cellranger-arc mkfastq in the previous step.
 
 For the following example, assume that one sample is processed using Single Cell Multiome ATAC + Gene Expression to generate a Multiome ATAC library and a Multiome Gene Expression (GEX) library. The Multiome ATAC library is sequenced on flow cell HNATACSQXX and the Illumina BCL output is located in /sequencing/Sample_ATAC_HNATACSQXX; similarly, the Multiome GEX library is sequenced on flow cell HNGEXSQXXX and the Illumina BCL output is located in /sequencing/Sample_GEX_HNGEXSQXXX.
 
-Run cellranger-arc mkfastq
+#### 2.1.1 Run cellranger-arc mkfastq
+
 Follow the instructions on running cellranger-arc mkfastq to generate FASTQ files for both the ATAC and GEX flow cells. cellranger-arc mkfastq will create output ATAC FASTQ files in HNATACSQXX/outs/fastq_path and GEX FASTQ files in HNGEXSQXXX/outs/fastq_path.
 
-Download or create a cellranger-arc-compatible reference
+**Download or create a cellranger-arc-compatible reference**
 Reference packages for human (GRCh38) and mouse (mm10) compatible with Cell Ranger ARC are available for download. You can also create a reference package using cellranger-arc mkref starting with a genome assembly FASTA file, a GTF file of gene annotations, and optionally a file of transcription factor motifs in JASPAR format.
 
-Create a libraries CSV file
-Construct a 3-column libraries CSV file that specifies the location of the ATAC and GEX FASTQ files associated with the sample.
-
-
+**Create a libraries CSV file**
+Construct a 3-column libraries CSV file that specifies the location of the ATAC and GEX FASTQ files associated with the samples.
 Column Name	Description
-fastqs	A fully qualified path to the directory containing the demultiplexed FASTQ files for this sample. This field does not accept comma-delimited paths. If you have multiple sets of fastqs for this library, add an additional row, and use the use same library_type value.
-sample	Sample name assigned in the bcl2fastq sample sheet.
-library_type	This field is case-sensitive and must exactly match Chromatin Accessibility for a Multiome ATAC library and Gene Expression for a Multiome GEX library.
+```fastqs```	A fully qualified path to the directory containing the demultiplexed FASTQ files for this sample. This field does not accept comma-delimited paths. If you have multiple sets of fastqs for this library, add an additional row, and use the use same library_type value.
+```sample```	Sample name assigned in the bcl2fastq sample sheet.
+```library_type```	This field is case-sensitive and must exactly match Chromatin Accessibility for a Multiome ATAC library and Gene Expression for a Multiome GEX library.
 For our example, the file would look as follows:
-
-fastqs,sample,library_type
-/home/jdoe/runs/HNGEXSQXXX/outs/fastq_path,example,Gene Expression
-/home/jdoe/runs/HNATACSQXX/outs/fastq_path,example,Chromatin Accessibility
-The CSV contains two rows as all the sequencing data for ATAC (GEX resp.) were obtained from one flow cell. The library_type is restricted to be either Gene Expression or Chromatin Accessibility.
+The CSV contains two rows as all the sequencing data for ATAC (GEX resp.) were obtained from one flow cell. The ```library_type``` is restricted to be either ```Gene Expression``` or ```Chromatin Accessibility```.
 Run cellranger-arc count
 To generate single cell feature counts and secondary analyses for a single library, run cellranger-arc count with the following arguments. For a complete listing of the arguments accepted, see the Command Line Argument Reference below, or run cellranger-arc count --help.
 
